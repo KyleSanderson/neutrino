@@ -551,8 +551,13 @@ type_tab:
  ******************************************************************************/
 .ent    HookSetupThread
 HookSetupThread:
-    addiu   $sp, -0x10
+    addiu   $sp, -0x30
     sd      $ra, 0($sp)
+    sd      $a0, 0x08($sp)
+    sd      $a1, 0x10($sp)
+    sd      $a2, 0x18($sp)
+    sd      $a3, 0x20($sp)
+    sd      $t0, 0x28($sp)
 
     /*
      * $t1 - number of hooks to do
@@ -581,16 +586,31 @@ HookSetupThread:
     /* inject jal to engine handler */
     lw      $v1, jal_EngineHandler
     sw      $v1, 0($v0)
-    b       3f
     sw      $zero, 4($v0)
+
+    /* Flush D-cache writeback + invalidate I-cache so patched code is visible */
+    move    $a0, $zero
+    addiu   $v1, $zero, 100
+    syscall                         /* FlushCache(WRITEBACK_DCACHE) */
+    li      $a0, 2
+    addiu   $v1, $zero, 100
+    syscall                         /* FlushCache(INVALIDATE_ICACHE) */
+
+    b       3f
+    nop
 2:
     /* next hook */
     addiu   $t1, -1
     bgtz    $t1, 1b
     addiu   $t3, 8
 3:
+    ld      $t0, 0x28($sp)
+    ld      $a3, 0x20($sp)
+    ld      $a2, 0x18($sp)
+    ld      $a1, 0x10($sp)
+    ld      $a0, 0x08($sp)
     ld      $ra, 0($sp)
-    addiu   $sp, 0x10
+    addiu   $sp, 0x30
 
     /* jump to original SetupThread() */
     lw      $t1, Old_SetupThread    # $t1 -> original SetupThread function
