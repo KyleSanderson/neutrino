@@ -29,6 +29,8 @@ struct SSystemSettings {
     char *sGC;
     char *sGSM;
     char *sCFGFile;
+    char *sCHTFiles[16]; // Up to 16 cheat files
+    int iCHTCount;
     int bDebug;
     int bLogo;
     int bQuickBoot;

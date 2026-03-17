@@ -38,6 +38,7 @@ _off64_t lseek64 (int __filedes, _off64_t __offset, int __whence); // should be 
 #include "iso_cnf.h"
 #include "xparam.h"
 #include "tomlc17.h"
+#include "cheat_loader.h"
 
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
@@ -131,6 +132,8 @@ void print_usage()
     printf("\n");
     printf("  -cfg=<file>       Load extra user/game specific config file (without .toml extension)\n");
     printf("\n");
+    printf("  -cht=<file>       Load cheat file (.cht format), can be specified multiple times\n");
+    printf("\n");
     printf("  -dbc              Enable debug colors\n");
     printf("  -logo             Enable logo (adds rom0:PS2LOGO to arguments)\n");
     printf("  -qb               Quick-Boot directly into load environment\n");
@@ -186,6 +189,10 @@ static int parse_cmdline_args(int argc, char *argv[], int *out_iELFArgcStart)
             sys.sGSM = &argv[i][5];
         else if (!strncmp(argv[i], "-cfg=", 5))
             sys.sCFGFile = &argv[i][5];
+        else if (!strncmp(argv[i], "-cht=", 5)) {
+            if (sys.iCHTCount < 16)
+                sys.sCHTFiles[sys.iCHTCount++] = &argv[i][5];
+        }
         else if (!strncmp(argv[i], "-cwd=", 5))
             continue; // already handled before config loading
         else if (!strncmp(argv[i], "-dbc", 4))
@@ -964,7 +971,23 @@ int main(int argc, char *argv[])
     //
     irxtab_t *irxtable = (irxtab_t *)sys.eecore.ModStorageStart;
     strncpy(sys.eecore.GameID, sGameID, 12);
-    sys.eecore.CheatList     = NULL;
+
+    // Load cheat files into module storage area (after IRX table)
+    if (sys.iCHTCount > 0) {
+        int count = load_cheats_from_files((const char **)sys.sCHTFiles, sys.iCHTCount, (int *)irxptr_end);
+        if (count > 0) {
+            sys.eecore.CheatList = (int *)irxptr_end;
+            // count includes all ints written (code pairs + null terminator pair)
+            irxptr_end += count * sizeof(int);
+            // Align to 16 bytes
+            irxptr_end = (uint8_t *)(((uintptr_t)irxptr_end + 15) & ~15);
+            printf("Loaded %d cheat codes\n", (count - 2) / 2);
+        } else {
+            sys.eecore.CheatList = NULL;
+        }
+    } else {
+        sys.eecore.CheatList = NULL;
+    }
     sys.eecore.ModStorageEnd = irxptr_end;
 
     // Add simple checksum over the module data

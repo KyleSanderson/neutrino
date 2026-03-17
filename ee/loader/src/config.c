@@ -355,6 +355,12 @@ int load_config(toml_datum_t t)
     toml_string_in_overwrite(t, "default_gc",     &sys.sGC);
     toml_string_in_overwrite(t, "default_gsm",    &sys.sGSM);
     toml_string_in_overwrite(t, "default_cfg",    &sys.sCFGFile);
+    {
+        char *_cht = NULL;
+        toml_string_in_overwrite(t, "default_cht", &_cht);
+        if (_cht != NULL && sys.iCHTCount < 16)
+            sys.sCHTFiles[sys.iCHTCount++] = _cht;
+    }
     toml_bool_in_overwrite  (t, "default_dbc",    &sys.bDebug);
     toml_bool_in_overwrite  (t, "default_logo",   &sys.bLogo);
 
