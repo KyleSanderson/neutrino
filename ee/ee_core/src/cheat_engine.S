@@ -551,13 +551,8 @@ type_tab:
  ******************************************************************************/
 .ent    HookSetupThread
 HookSetupThread:
-    addiu   $sp, -0x30
+    addiu   $sp, -0x10
     sd      $ra, 0($sp)
-    sd      $a0, 0x08($sp)
-    sd      $a1, 0x10($sp)
-    sd      $a2, 0x18($sp)
-    sd      $a3, 0x20($sp)
-    sd      $t0, 0x28($sp)
 
     /*
      * $t1 - number of hooks to do
@@ -588,13 +583,22 @@ HookSetupThread:
     sw      $v1, 0($v0)
     sw      $zero, 4($v0)
 
-    /* Flush D-cache writeback + invalidate I-cache so patched code is visible */
-    move    $a0, $zero
-    addiu   $v1, $zero, 100
-    syscall                         /* FlushCache(WRITEBACK_DCACHE) */
-    li      $a0, 2
-    addiu   $v1, $zero, 100
-    syscall                         /* FlushCache(INVALIDATE_ICACHE) */
+    /*
+     * Flush D-cache to main RAM and invalidate I-cache for both patched
+     * addresses (game hook point + eh_backup). Uses inline R5900 cache
+     * instructions instead of FlushCache syscall -- we are inside a
+     * SetSyscall handler so nested syscalls are unsafe.
+     *   cache 0x18 = DHWBIN  (D-cache Hit Writeback Invalidate)
+     *   cache 0x07 = BFHIN   (I-cache Hit Invalidate)
+     * Both addresses fit in a single 64-byte cache line each.
+     */
+    la      $at, eh_backup          /* reload -- lw pseudo clobbered $at */
+    sync                            /* complete preceding stores */
+    cache   0x18, 0($v0)           /* D-cache writeback: game hook addr */
+    cache   0x18, 0($at)           /* D-cache writeback: eh_backup */
+    sync                            /* ensure writebacks reach main RAM */
+    cache   0x07, 0($v0)           /* I-cache invalidate: game hook addr */
+    cache   0x07, 0($at)           /* I-cache invalidate: eh_backup */
 
     b       3f
     nop
@@ -604,13 +608,8 @@ HookSetupThread:
     bgtz    $t1, 1b
     addiu   $t3, 8
 3:
-    ld      $t0, 0x28($sp)
-    ld      $a3, 0x20($sp)
-    ld      $a2, 0x18($sp)
-    ld      $a1, 0x10($sp)
-    ld      $a0, 0x08($sp)
     ld      $ra, 0($sp)
-    addiu   $sp, 0x30
+    addiu   $sp, 0x10
 
     /* jump to original SetupThread() */
     lw      $t1, Old_SetupThread    # $t1 -> original SetupThread function
