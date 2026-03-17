@@ -4,3 +4,5 @@ IOP_OBJS_DIR = obj/
 IOP_BIN      = ministack.irx
 
 include ../Rules.make
+
+IOP_SRXFIXUP_FLAGS += --allow-zero-text

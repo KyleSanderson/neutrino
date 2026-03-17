@@ -12,7 +12,7 @@ EE_BIN = $(EE_BIN_NAME)_unpacked.elf
 EE_BIN_PACKED = $(EE_BIN_NAME).elf
 
 $(EE_BIN_PACKED): $(EE_BIN)
-	ps2-packer $< $@ > /dev/null
+	ps2-packer-lite $< $@ > /dev/null
 
 version.txt: FORCE
 	echo $(GIT_TAG) > $@

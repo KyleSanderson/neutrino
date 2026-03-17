@@ -24,3 +24,5 @@ else ifeq ($(UDPFS_FHI),1)
 endif
 
 include ../Rules.make
+
+IOP_SRXFIXUP_FLAGS += --allow-zero-text
