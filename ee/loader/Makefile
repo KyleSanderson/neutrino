@@ -11,8 +11,13 @@ EE_BIN_NAME = neutrino
 EE_BIN = $(EE_BIN_NAME)_unpacked.elf
 EE_BIN_PACKED = $(EE_BIN_NAME).elf
 
+# Use ps2-packer-lite if available (works without an external lzma-packer.so),
+# otherwise fall back to ps2-packer (present in the ps2max/dev CI container).
+_PACKER_LITE := $(shell command -v ps2-packer-lite 2>/dev/null)
+EE_BIN_PACKER ?= $(if $(_PACKER_LITE),ps2-packer-lite,ps2-packer)
+
 $(EE_BIN_PACKED): $(EE_BIN)
-	ps2-packer-lite $< $@ > /dev/null
+	$(EE_BIN_PACKER) $< $@ > /dev/null
 
 version.txt: FORCE
 	echo $(GIT_TAG) > $@
